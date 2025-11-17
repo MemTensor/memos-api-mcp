@@ -139,6 +139,8 @@ memos-mcp/
 - `@modelcontextprotocol/sdk`: ^1.0.0
 - `express`: ^4.19.2
 - `zod`: ^3.23.8
+- `ts-md5`: ^2.0.0
+
 
 ## License
 
