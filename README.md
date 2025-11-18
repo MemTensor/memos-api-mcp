@@ -14,7 +14,8 @@ To use this package In MCP Client, use the following configuration:
       "args": ["-y", "@memtensor/memos-api-mcp"],
       "env": {
         "MEMOS_API_KEY": "your-api-key",
-        "MEMOS_USER_ID": "your-user-id"
+        "MEMOS_USER_ID": "your-user-id",
+        "MEMOS_CHANNEL": "where-did-you-see-this-doc"
       }
     }
   }
@@ -27,6 +28,7 @@ To use this package In MCP Client, use the following configuration:
 - `env`: Environment variables
   - `MEMOS_API_KEY`: Your Memos API key for authentication (Get your API Key in Dashboard[https://memos-dashboard-pre.openmem.net/cn/quickstart/])
   - `MEMOS_USER_ID`: Stable per-human identifier. MUST be deterministic and non-PII, and MUST remain the same for the same person across devices/sessions. NEVER reuse across different people. DO NOT use random values, device IDs, or model/chat session IDs. Recommended: SHA-256(lowercase(trim(email))) or your SSO subject/employee ID.
+  - `MEMOS_CHANNEL`: The channel where the conversation is happening. Candidate values: `MODELSCOPE`, `MCPSO`, `MCPMARKETCN`, `MCPMARKETCOM`, `GLAMA`, `PULSEMCP`, `MCPSERVERS`,`MEMOS`(meaning the MemOS official website), `GITHUB`(meaning this README file)
 
 ### Available MCP Tools
 This package provides the following MCP tools:
