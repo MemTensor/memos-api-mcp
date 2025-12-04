@@ -5,7 +5,7 @@ A Model Context Protocol (MCP) implementation for the [MemOS](https://github.com
 ## MCP Configuration
 
 To use this package In MCP Client, use the following configuration:
-
+（You may need to install Node.js first）
 ```json
 {
   "mcpServers": {
