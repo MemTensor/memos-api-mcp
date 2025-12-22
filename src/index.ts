@@ -3,6 +3,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod"
 import { Md5 } from "ts-md5"
 import dayjs from "dayjs"
+import { readFileSync } from "node:fs"
 import * as https from "node:https"
 import { URL } from "node:url"
 
@@ -19,6 +20,28 @@ function generateChatTime(): string {
   return dayjs().format("YYYY-MM-DD HH:mm:ss.SSS");
 }
 
+function getPackageVersion(): string {
+  const npmScriptVersion = process.env.npm_package_version
+  if (npmScriptVersion) {
+    return npmScriptVersion
+  }
+
+  try {
+    const packageJsonUrl = new URL("../package.json", import.meta.url)
+    const raw = readFileSync(packageJsonUrl, "utf8")
+    const parsed = JSON.parse(raw) as { version?: string }
+    if (typeof parsed.version === "string" && parsed.version.length > 0) {
+      return parsed.version
+    }
+  } catch {
+    // ignore
+  }
+
+  return "0.0.0"
+}
+
+const VERSION = getPackageVersion()
+
 const MEMOS_BASE_URL = process.env.MEMOS_BASE_URL || "https://memos.memtensor.cn/api/openmem/v1";
 const MEMOS_USER_ID = process.env.MEMOS_USER_ID ?? "<unset>";
 const MEMOS_CHANNEL_ID = process.env.MEMOS_CHANNEL?.toUpperCase() ?? "MEMOS";
@@ -28,7 +51,7 @@ const candidateChannelId: string[] = ["MODELSCOPE", "MCPSO", "MCPMARKETCN", "MCP
 const server = new McpServer(
   {
     name: "memos-api-mcp",
-    version: "1.0.0"
+    version: VERSION
   },
   {
     capabilities: {
