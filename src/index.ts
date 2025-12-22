@@ -315,8 +315,12 @@ server.tool(
 server.tool(
   "delete_memory",
   `
-  Trigger: When the user wants to delete specific memories.
-  Purpose: Delete specific memories by their IDs.
+  Trigger: ONLY when the user explicitly requests to delete specific memories.
+  Purpose: Delete specific memories by their IDs. 
+  Usage Guidelines:
+    - This tool is primarily for developer use or explicit user deletion requests.
+    - DO NOT use this tool to "update" a memory by deleting and then re-adding it. To modify or update a memory, use \`add_feedback\` instead.
+    - Note: Memory search is paginated. Be cautious when deleting based on search results to ensure you are targeting the correct memory and handling pagination consistency.
   Parameters:
     - \`memory_ids\`: List of memory IDs to delete.
   `,
@@ -363,11 +367,11 @@ server.tool(
 server.tool(
   "add_feedback",
   `
-  Trigger: Auto-invoked when a user provides feedback.
-  Purpose: Submit user feedback to the MemOS system.
+  Trigger: Auto-invoked when a user provides feedback OR whenever the user wants to MODIFY or UPDATE an existing memory.
+  Purpose: Submit user feedback to the MemOS system, or strictly for updating/modifying existing memories.
   Parameters:
     - \`conversation_first_message\`: The first message sent by the user in the entire conversation thread. Used to generate the conversation_id.
-    - \`feedback_content\`: Content of the feedback (required)
+    - \`feedback_content\`: Content of the feedback or the update instruction (required)
     - \`agent_id\`: Agent ID (optional)
     - \`app_id\`: App ID (optional)
     - \`feedback_time\`: Feedback time string (optional, default current UTC)
