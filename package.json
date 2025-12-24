@@ -1,6 +1,6 @@
 {
   "name": "@memtensor/memos-api-mcp",
-  "version": "1.0.18-beta.0",
+  "version": "1.0.18-beta.1",
   "type": "module",
   "bin": {
     "memos-api-mcp": "build/index.js"
@@ -12,7 +12,9 @@
     "start": "node build/index.js",
     "inspect": "npx @modelcontextprotocol/inspector node build/index.js",
     "publish-beta": "npm run build && npm publish --tag beta",
-    "publish-beta-patch": "npm run build && npm version prepatch --preid=beta && npm publish --tag beta"
+    "publish-beta-patch": "npm run build && npm version prepatch --preid=beta && npm publish --tag beta",
+    "publish-latest": "npm run build && npm version $(node -p \"require('./package.json').version.split('-')[0]\") && npm publish",
+    "publish-latest-patch": "npm run build && npm version patch && npm publish"
   },
   "engines": {
     "node": ">=18"
