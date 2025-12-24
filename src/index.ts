@@ -206,8 +206,9 @@ server.tool(
   Trigger: 
     1. AUTO-INVOKED: After every answer to save dialogue history.
     2. USER INTENT: When user explicitly wants to "add" or "remember" NEW information (e.g., "Add a memory...", "Remember that...", "New memory...").
-  Purpose: Save dialogue history and record NEW memories.
+  Purpose: Save dialogue history (REQUIRED) and record NEW memories.
   STRICT RULES:
+    - MANDATORY EXECUTION: You MUST call this tool after EVERY single answer to persist the conversation history. This is NOT optional.
     - ALWAYS use this tool for NEW memories.
     - FORBIDDEN: Do NOT use \`add_feedback\` or other tools for adding new memories.
     - FORBIDDEN: Do NOT use this tool to modify/update existing memories.
