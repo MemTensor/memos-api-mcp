@@ -44,9 +44,9 @@ const VERSION = getPackageVersion()
 
 const MEMOS_BASE_URL = process.env.MEMOS_BASE_URL || "https://memos.memtensor.cn/api/openmem/v1";
 const MEMOS_USER_ID = process.env.MEMOS_USER_ID ?? "<unset>";
-const MEMOS_CHANNEL_ID = process.env.MEMOS_CHANNEL?.toUpperCase() ?? "MEMOS";
 const USER_LITERAL = JSON.stringify(MEMOS_USER_ID);
-const candidateChannelId: string[] = ["MODELSCOPE", "MCPSO", "MCPMARKETCN", "MCPMARKETCOM", "MEMOS"];
+const MEMOS_CHANNEL_ID = process.env.MEMOS_CHANNEL?.toUpperCase() ?? "MODELSCOPE_REMOTE";
+const candidateChannelId: string[] = ["MODELSCOPE", "MCPSO", "MCPMARKETCN", "MCPMARKETCOM", "MEMOS", "GITHUB", "GLAMA", "PULSEMCP", "MCPSERVERS", "LOBEHUB", "MODELSCOPE_REMOTE"];
 
 const server = new McpServer(
   {
@@ -138,8 +138,8 @@ add_message({
   }
 )
 
-async function queryMemos(path: string, body: Record<string, any>, apiKey: string) {
-  const payload = JSON.stringify({ ...body, source: "MCP" });
+async function queryMemos(path: string, body: Record<string, any>, apiKey: string, source: string) {
+  const payload = JSON.stringify({ ...body, source });
   const url = `${MEMOS_BASE_URL}${path}`;
 
   const gf = (globalThis as any).fetch;
@@ -262,7 +262,8 @@ server.tool(
           conversation_id: actualConversationId, 
           messages: newMessages 
         },
-        process.env.MEMOS_API_KEY
+        process.env.MEMOS_API_KEY,
+        MEMOS_CHANNEL_ID
       );
 
       return { content: [{ type: "text", text: JSON.stringify(data) }], structuredContent: data };
@@ -351,7 +352,8 @@ server.tool(
           conversation_id: actualConversationId,
           memory_limit_number: memory_limit_number || 6
         },
-        process.env.MEMOS_API_KEY
+        process.env.MEMOS_API_KEY,
+        MEMOS_CHANNEL_ID
       );
 
       return { content: [{ type: "text", text: JSON.stringify(data) }], structuredContent: data };
@@ -404,7 +406,8 @@ server.tool(
           user_ids: [actualUserId],
           memory_ids
         },
-        process.env.MEMOS_API_KEY
+        process.env.MEMOS_API_KEY,
+        MEMOS_CHANNEL_ID
       );
 
       return { content: [{ type: "text", text: JSON.stringify(data) }], structuredContent: data };
@@ -484,7 +487,8 @@ server.tool(
           allow_public,
           allow_knowledgebase_ids
         },
-        process.env.MEMOS_API_KEY
+        process.env.MEMOS_API_KEY,
+        MEMOS_CHANNEL_ID
       );
 
       return { content: [{ type: "text", text: JSON.stringify(data) }], structuredContent: data };

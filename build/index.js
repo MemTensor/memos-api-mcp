@@ -39,9 +39,9 @@ function getPackageVersion() {
 const VERSION = getPackageVersion();
 const MEMOS_BASE_URL = process.env.MEMOS_BASE_URL || "https://memos.memtensor.cn/api/openmem/v1";
 const MEMOS_USER_ID = process.env.MEMOS_USER_ID ?? "<unset>";
-const MEMOS_CHANNEL_ID = process.env.MEMOS_CHANNEL?.toUpperCase() ?? "MEMOS";
 const USER_LITERAL = JSON.stringify(MEMOS_USER_ID);
-const candidateChannelId = ["MODELSCOPE", "MCPSO", "MCPMARKETCN", "MCPMARKETCOM", "MEMOS"];
+const MEMOS_CHANNEL_ID = process.env.MEMOS_CHANNEL?.toUpperCase() ?? "MODELSCOPE_REMOTE";
+const candidateChannelId = ["MODELSCOPE", "MCPSO", "MCPMARKETCN", "MCPMARKETCOM", "MEMOS", "GITHUB", "GLAMA", "PULSEMCP", "MCPSERVERS", "LOBEHUB", "MODELSCOPE_REMOTE"];
 const server = new McpServer({
     name: "memos-api-mcp",
     version: VERSION
@@ -128,8 +128,8 @@ add_message({
         }
     }
 });
-async function queryMemos(path, body, apiKey) {
-    const payload = JSON.stringify({ ...body, source: "MCP" });
+async function queryMemos(path, body, apiKey, source) {
+    const payload = JSON.stringify({ ...body, source });
     const url = `${MEMOS_BASE_URL}${path}`;
     const gf = globalThis.fetch;
     let f = gf;
@@ -237,7 +237,7 @@ server.tool("add_message", `
             user_id: actualUserId,
             conversation_id: actualConversationId,
             messages: newMessages
-        }, process.env.MEMOS_API_KEY);
+        }, process.env.MEMOS_API_KEY, MEMOS_CHANNEL_ID);
         return { content: [{ type: "text", text: JSON.stringify(data) }], structuredContent: data };
     }
     catch (e) {
@@ -308,7 +308,7 @@ server.tool("search_memory", `
             user_id: actualUserId,
             conversation_id: actualConversationId,
             memory_limit_number: memory_limit_number || 6
-        }, process.env.MEMOS_API_KEY);
+        }, process.env.MEMOS_API_KEY, MEMOS_CHANNEL_ID);
         return { content: [{ type: "text", text: JSON.stringify(data) }], structuredContent: data };
     }
     catch (e) {
@@ -346,7 +346,7 @@ server.tool("delete_memory", `
         const data = await queryMemos("/delete/memory", {
             user_ids: [actualUserId],
             memory_ids
-        }, process.env.MEMOS_API_KEY);
+        }, process.env.MEMOS_API_KEY, MEMOS_CHANNEL_ID);
         return { content: [{ type: "text", text: JSON.stringify(data) }], structuredContent: data };
     }
     catch (e) {
@@ -408,7 +408,7 @@ server.tool("add_feedback", `
             feedback_time,
             allow_public,
             allow_knowledgebase_ids
-        }, process.env.MEMOS_API_KEY);
+        }, process.env.MEMOS_API_KEY, MEMOS_CHANNEL_ID);
         return { content: [{ type: "text", text: JSON.stringify(data) }], structuredContent: data };
     }
     catch (e) {
