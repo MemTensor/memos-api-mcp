@@ -91,15 +91,17 @@ Every user message
 Use retrieved memories **only if relevant**. If none are relevant, answer normally.
 
 ### 3) 💾 Save Conversation (Auto-invoked AFTER answering)
-### 3) 💾 Save Conversation (Auto-invoked AFTER answering)
 - **Phase**: Post-Answer (Mandatory).
 - **Trigger**: AUTO-CALL this tool immediately after you finish generating the text response.
-- **Order**: [Text Answer] -> [add_message]. Never skip this.
+- **Order**: [Text Answer] -> [add_message] -> [STOP]. Never skip this.
+- **CRITICAL**: Do NOT continue generating text after calling this tool. The conversation turn ends here.
+- **FORBIDDEN behavior**: Do NOT output the answer again. Do NOT say "Memory saved". Do NOT say "I have recorded this".
+- **SILENCE**: The \`add_message\` tool call IS the final acknowledgement. No text needed.
 - **Tool**: \`add_message\`
 - **Purpose**: PRIMARY tool for recording **NEW facts/information** and persisting conversation history for future personalization.
 - **Rule**: If the user provides new information or wants to "remember" something new, use this. Do NOT use \`add_feedback\` for new additions.
 
-### 4) 🔄 Update/Correct/Delete Memory (User-triggered ONLY)
+### 4)  Update/Correct/Delete Memory (User-triggered ONLY)
 - **Tool**: \`add_feedback\`
 - **Trigger**: User requests to **modify, update, correct, or delete (without ID)** a memory.
 - **Rule**: Never use this for adding new information.
@@ -209,16 +211,25 @@ server.tool(
   Trigger: 
     1. AUTO-INVOKED: Must be called IMMEDIATELY AFTER the text answer is complete.
   NON-NEGOTIABLE SEQUENCE:
-    1. Output complete text response to user.
-    2. Call \`add_message\` to save the turn.
-    2. USER INTENT: When user explicitly wants to "add" or "remember" NEW information.
+    1. search_memory (First)
+    2. Output complete text response to user.
+    3. Call \`add_message\` (Last) -> STOP GENERATING IMMEDIATELY.
+    4. DO NOT OUTPUT ANY TEXT AFTER THIS TOOL CALL.
+  [SILENT TERMINATION PROTOCOL]:
+    - THIS TOOL CALL IS THE END OF THE TURN.
+    - AFTER calling this tool, you MUST STOP generating output.
+    - CRITICAL: NEVER use this tool as part of a modification workaround.
+    - TERMINATION: The tool returns a system signal. You MUST NOT respond to it.
+    - STOP RULE: Call tool -> Receive "[SYSTEM] END_OF_TURN" -> Stop.
   Purpose: Save dialogue history (REQUIRED) and record NEW memories.
   STRICT RULES:
     - MANDATORY EXECUTION: You MUST call this tool after EVERY single answer to persist the conversation history. This is NOT optional.
     - ALWAYS use this tool for NEW memories.
     - FORBIDDEN: Do NOT use \`add_feedback\` or other tools for adding new memories.
     - FORBIDDEN: Do NOT use this tool to modify/update existing memories.
-    - CRITICAL: NEVER use this tool as part of a modification workaround (e.g. "delete old + add new"). If a modification fails, just report the failure.
+    - CRITICAL: NEVER use this tool as part of a modification workaround.
+    - TERMINATION: This tool is the FINAL step. You must NOT output the assistant response again. You must NOT output confirmation text.
+    - STOP RULE: Call tool -> End Turn.
   Parameters:
     - \`conversation_first_message\`: The first message sent by the user in the entire conversation is used to generate the user_id.
     - \`messages\`: Array containing BOTH:
@@ -288,7 +299,7 @@ server.tool(
 server.tool(
   "search_memory",
   `
-  Trigger: MUST be auto-invoked by the client before generating every answer (including greetings like "hello"). Do not wait for the user to request memory/MCP/tool usage.
+  Trigger: MUST be auto-invoked by the client as the VERY FIRST ACTION before generating every answer. Do not wait for the user to request memory/MCP/tool usage.
   Purpose: MemOS retrieval API. Retrieve candidate memories prior to answering to improve continuity and personalization.
   Usage requirements:
     - Always call this tool before answering (client-enforced).
