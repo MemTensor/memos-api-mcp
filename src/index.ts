@@ -44,9 +44,9 @@ const VERSION = getPackageVersion()
 
 const MEMOS_BASE_URL = process.env.MEMOS_BASE_URL || "https://memos.memtensor.cn/api/openmem/v1";
 const MEMOS_USER_ID = process.env.MEMOS_USER_ID ?? "<unset>";
-const MEMOS_CHANNEL_ID = process.env.MEMOS_CHANNEL?.toUpperCase() ?? "MEMOS";
 const USER_LITERAL = JSON.stringify(MEMOS_USER_ID);
-const candidateChannelId: string[] = ["MODELSCOPE", "MCPSO", "MCPMARKETCN", "MCPMARKETCOM", "MEMOS"];
+const MEMOS_CHANNEL_ID = process.env.MEMOS_CHANNEL?.toUpperCase() ?? "MODELSCOPE_REMOTE";
+const candidateChannelId: string[] = ["MODELSCOPE", "MCPSO", "MCPMARKETCN", "MCPMARKETCOM", "MEMOS", "GITHUB", "GLAMA", "PULSEMCP", "MCPSERVERS", "LOBEHUB", "MODELSCOPE_REMOTE"];
 
 const server = new McpServer(
   {
@@ -138,8 +138,8 @@ add_message({
   }
 )
 
-async function queryMemos(path: string, body: Record<string, any>, apiKey: string) {
-  const payload = JSON.stringify({ ...body, source: "MCP" });
+async function queryMemos(path: string, body: Record<string, any>, apiKey: string, source: string) {
+  const payload = JSON.stringify({ ...body, source });
   const url = `${MEMOS_BASE_URL}${path}`;
 
   const gf = (globalThis as any).fetch;
@@ -247,7 +247,7 @@ server.tool(
 
       // If no conversation_id provided, fall back to environment variable
       const actualConversationId = stringToMd5(process.env.MEMOS_USER_ID + '\n' + conversation_first_message) || process.env.MEMOS_CONVERSATION_ID;
-      const actualUserId = MEMOS_CHANNEL_ID === "MEMOS" ? process.env.MEMOS_USER_ID : process.env.MEMOS_USER_ID + "-" + MEMOS_CHANNEL_ID;
+
 
       const newMessages = messages.map(message => ({
         role: message.role,
@@ -258,11 +258,12 @@ server.tool(
       const data = await queryMemos(
         "/add/message",
         { 
-          user_id: actualUserId, 
+          user_id: process.env.MEMOS_USER_ID, 
           conversation_id: actualConversationId, 
           messages: newMessages 
         },
-        process.env.MEMOS_API_KEY
+        process.env.MEMOS_API_KEY,
+        MEMOS_CHANNEL_ID
       );
 
       return { content: [{ type: "text", text: JSON.stringify(data) }], structuredContent: data };
@@ -341,17 +342,18 @@ server.tool(
       }
 
       const actualConversationId = stringToMd5(process.env.MEMOS_USER_ID + '\n' + conversation_first_message) || process.env.MEMOS_CONVERSATION_ID;
-      const actualUserId = MEMOS_CHANNEL_ID === "MEMOS" ? process.env.MEMOS_USER_ID : process.env.MEMOS_USER_ID + "-" + MEMOS_CHANNEL_ID;
+
 
       const data = await queryMemos(
         "/search/memory",
         {
           query,
-          user_id: actualUserId,
+          user_id: process.env.MEMOS_USER_ID,
           conversation_id: actualConversationId,
           memory_limit_number: memory_limit_number || 6
         },
-        process.env.MEMOS_API_KEY
+        process.env.MEMOS_API_KEY,
+        MEMOS_CHANNEL_ID
       );
 
       return { content: [{ type: "text", text: JSON.stringify(data) }], structuredContent: data };
@@ -396,15 +398,16 @@ server.tool(
         throw new Error("Unknown channel: " + MEMOS_CHANNEL_ID);
       }
 
-      const actualUserId = MEMOS_CHANNEL_ID === "MEMOS" ? process.env.MEMOS_USER_ID : process.env.MEMOS_USER_ID + "-" + MEMOS_CHANNEL_ID;
+
 
       const data = await queryMemos(
         "/delete/memory",
         {
-          user_ids: [actualUserId],
+          user_ids: [process.env.MEMOS_USER_ID],
           memory_ids
         },
-        process.env.MEMOS_API_KEY
+        process.env.MEMOS_API_KEY,
+        MEMOS_CHANNEL_ID
       );
 
       return { content: [{ type: "text", text: JSON.stringify(data) }], structuredContent: data };
@@ -470,12 +473,12 @@ server.tool(
       }
 
       const actualConversationId = stringToMd5(process.env.MEMOS_USER_ID + '\n' + conversation_first_message) || process.env.MEMOS_CONVERSATION_ID;
-      const actualUserId = MEMOS_CHANNEL_ID === "MEMOS" ? process.env.MEMOS_USER_ID : process.env.MEMOS_USER_ID + "-" + MEMOS_CHANNEL_ID;
+
 
       const data = await queryMemos(
         "/add/feedback",
         {
-          user_id: actualUserId,
+          user_id: process.env.MEMOS_USER_ID,
           conversation_id: actualConversationId,
           feedback_content,
           agent_id,
@@ -484,7 +487,8 @@ server.tool(
           allow_public,
           allow_knowledgebase_ids
         },
-        process.env.MEMOS_API_KEY
+        process.env.MEMOS_API_KEY,
+        MEMOS_CHANNEL_ID
       );
 
       return { content: [{ type: "text", text: JSON.stringify(data) }], structuredContent: data };
