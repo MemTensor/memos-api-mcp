@@ -65,8 +65,8 @@ This system must run **automatically for every turn**. Do **not** wait for the u
 \`\`\`
 Every user message
   → 1) 🔍 search_memory (AUTO, before answering)
-  → 2) 💬 Answer (use only relevant memories; ignore noise)
-  → 3) 💾 add_message (AUTO, after answering)
+  → 2) 💬 Answer (Output full response to user)
+  → 3) 💾 add_message (AUTO, IMMEDIATELY after answering)
 \`\`\`
 
 ### 1) 🔍 Search Memory (Auto-invoked BEFORE answering)
@@ -83,7 +83,10 @@ Every user message
 Use retrieved memories **only if relevant**. If none are relevant, answer normally.
 
 ### 3) 💾 Save Conversation (Auto-invoked AFTER answering)
-- **Trigger**: Must be auto-called after producing the final answer on **every turn**.
+### 3) 💾 Save Conversation (Auto-invoked AFTER answering)
+- **Phase**: Post-Answer (Mandatory).
+- **Trigger**: AUTO-CALL this tool immediately after you finish generating the text response.
+- **Order**: [Text Answer] -> [add_message]. Never skip this.
 - **Tool**: \`add_message\`
 - **Purpose**: PRIMARY tool for recording **NEW facts/information** and persisting conversation history for future personalization.
 - **Rule**: If the user provides new information or wants to "remember" something new, use this. Do NOT use \`add_feedback\` for new additions.
@@ -191,8 +194,11 @@ async function queryMemos(path, body, apiKey, source) {
 }
 server.tool("add_message", `
   Trigger: 
-    1. AUTO-INVOKED: After every answer to save dialogue history.
-    2. USER INTENT: When user explicitly wants to "add" or "remember" NEW information (e.g., "Add a memory...", "Remember that...", "New memory...").
+    1. AUTO-INVOKED: Must be called IMMEDIATELY AFTER the text answer is complete.
+  NON-NEGOTIABLE SEQUENCE:
+    1. Output complete text response to user.
+    2. Call \`add_message\` to save the turn.
+    2. USER INTENT: When user explicitly wants to "add" or "remember" NEW information.
   Purpose: Save dialogue history (REQUIRED) and record NEW memories.
   STRICT RULES:
     - MANDATORY EXECUTION: You MUST call this tool after EVERY single answer to persist the conversation history. This is NOT optional.
@@ -227,14 +233,13 @@ server.tool("add_message", `
         }
         // If no conversation_id provided, fall back to environment variable
         const actualConversationId = stringToMd5(process.env.MEMOS_USER_ID + '\n' + conversation_first_message) || process.env.MEMOS_CONVERSATION_ID;
-        const actualUserId = MEMOS_CHANNEL_ID === "MEMOS" ? process.env.MEMOS_USER_ID : process.env.MEMOS_USER_ID + "-" + MEMOS_CHANNEL_ID;
         const newMessages = messages.map(message => ({
             role: message.role,
             content: message.content,
             chat_time: message.chat_time || generateChatTime()
         }));
         const data = await queryMemos("/add/message", {
-            user_id: actualUserId,
+            user_id: process.env.MEMOS_USER_ID,
             conversation_id: actualConversationId,
             messages: newMessages
         }, process.env.MEMOS_API_KEY, MEMOS_CHANNEL_ID);
@@ -302,10 +307,9 @@ server.tool("search_memory", `
             throw new Error("Unknown channel: " + MEMOS_CHANNEL_ID);
         }
         const actualConversationId = stringToMd5(process.env.MEMOS_USER_ID + '\n' + conversation_first_message) || process.env.MEMOS_CONVERSATION_ID;
-        const actualUserId = MEMOS_CHANNEL_ID === "MEMOS" ? process.env.MEMOS_USER_ID : process.env.MEMOS_USER_ID + "-" + MEMOS_CHANNEL_ID;
         const data = await queryMemos("/search/memory", {
             query,
-            user_id: actualUserId,
+            user_id: process.env.MEMOS_USER_ID,
             conversation_id: actualConversationId,
             memory_limit_number: memory_limit_number || 6
         }, process.env.MEMOS_API_KEY, MEMOS_CHANNEL_ID);
@@ -342,9 +346,8 @@ server.tool("delete_memory", `
         if (!candidateChannelId.includes(MEMOS_CHANNEL_ID)) {
             throw new Error("Unknown channel: " + MEMOS_CHANNEL_ID);
         }
-        const actualUserId = MEMOS_CHANNEL_ID === "MEMOS" ? process.env.MEMOS_USER_ID : process.env.MEMOS_USER_ID + "-" + MEMOS_CHANNEL_ID;
         const data = await queryMemos("/delete/memory", {
-            user_ids: [actualUserId],
+            user_ids: [process.env.MEMOS_USER_ID],
             memory_ids
         }, process.env.MEMOS_API_KEY, MEMOS_CHANNEL_ID);
         return { content: [{ type: "text", text: JSON.stringify(data) }], structuredContent: data };
@@ -398,9 +401,8 @@ server.tool("add_feedback", `
             throw new Error("Unknown channel: " + MEMOS_CHANNEL_ID);
         }
         const actualConversationId = stringToMd5(process.env.MEMOS_USER_ID + '\n' + conversation_first_message) || process.env.MEMOS_CONVERSATION_ID;
-        const actualUserId = MEMOS_CHANNEL_ID === "MEMOS" ? process.env.MEMOS_USER_ID : process.env.MEMOS_USER_ID + "-" + MEMOS_CHANNEL_ID;
         const data = await queryMemos("/add/feedback", {
-            user_id: actualUserId,
+            user_id: process.env.MEMOS_USER_ID,
             conversation_id: actualConversationId,
             feedback_content,
             agent_id,
