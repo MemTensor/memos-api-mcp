@@ -46,7 +46,7 @@ const MEMOS_BASE_URL = process.env.MEMOS_BASE_URL || "https://memos.memtensor.cn
 const MEMOS_USER_ID = process.env.MEMOS_USER_ID ?? "<unset>";
 const USER_LITERAL = JSON.stringify(MEMOS_USER_ID);
 const MEMOS_CHANNEL_ID = process.env.MEMOS_CHANNEL?.toUpperCase() ?? "MODELSCOPE_REMOTE";
-const candidateChannelId: string[] = ["MODELSCOPE", "MCPSO", "MCPMARKETCN", "MCPMARKETCOM", "MEMOS", "GITHUB", "GLAMA", "PULSEMCP", "MCPSERVERS", "LOBEHUB", "MODELSCOPE_REMOTE"];
+const candidateChannelId: string[] = ["MODELSCOPE", "MCPSO", "MCPMARKETCN", "MCPMARKETCOM", "MEMOS", "GITHUB", "GLAMA", "PULSEMCP", "MCPSERVERS", "LOBEHUB", "MODELSCOPE_REMOTE","BAILIAN"];
 
 const server = new McpServer(
   {
