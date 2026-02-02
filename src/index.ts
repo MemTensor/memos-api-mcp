@@ -97,9 +97,14 @@ Use retrieved memories **only if relevant**. If none are relevant, answer normal
 - **Rule**: If the user provides new information or wants to "remember" something new, use this. Do NOT use \`add_feedback\` for new additions.
 
 ### 4) 🔄 Update/Correct/Delete Memory (User-triggered ONLY)
-- **Tool**: \`add_feedback\`
-- **Trigger**: User requests to **modify, update, correct, or delete (without ID)** a memory.
-- **Rule**: Never use this for adding new information.
+- **Trigger**: User requests to **modify, update, correct, or delete** a memory.
+- **Workflow for Deletion (No ID provided)**:
+    1. 🔍 **Search**: Call \`search_memory\` to find the relevant memory IDs.
+    2. 🗑️ **Delete**: Call \`delete_memory\` with the IDs found.
+    3. 📝 **Feedback**: Call \`add_feedback\` to confirm deletion and prevent future recurrence.
+- **Workflow for Modification**:
+    - Use \`add_feedback\` to describe the correction.
+- **Rule**: Never use these tools for adding new information (use \`add_message\` instead).
 
 ## ✅ Non-Negotiable Client Responsibilities
 1. **Auto-invoke** \`search_memory\` before **every** answer and \`add_message\` after **every** answer.
@@ -370,14 +375,14 @@ server.tool(
 server.tool(
   "delete_memory",
   `
-  Trigger: User provides specific ID(s) to delete.
+  Trigger: User explicitly asks to delete memories.
   Purpose: Delete memories by ID.
   STRICT RULES:
-    1. BATCHING: If multiple IDs are provided, call this tool ONCE with all IDs.
-    2. FORBIDDEN: Do NOT call multiple times. Do NOT enter search-delete loops.
-    3. FORBIDDEN: Do not use this tool if no ID is provided (use add_feedback instead).
-    4. CRITICAL: NEVER use this tool to "simulate" a modification (delete old + add new). This is strictly forbidden.
-    5. CRITICAL: ONLY use if user explicitly asks to delete AND provides IDs.
+    1. **PREREQUISITE**: If the user did NOT provide IDs, you MUST call \`search_memory\` first to find them.
+    2. **BATCHING**: If multiple IDs are provided (or found), call this tool ONCE with all IDs.
+    3. **WORKFLOW**: After successful deletion, you MUST call \`add_feedback\` to record the deletion intent.
+    4. FORBIDDEN: Do NOT call multiple times. Do NOT enter search-delete loops.
+    5. CRITICAL: NEVER use this tool to "simulate" a modification (delete old + add new). This is strictly forbidden.
   Parameters:
     - \`memory_ids\`: List of memory IDs to delete.
   `,
@@ -425,19 +430,21 @@ server.tool(
 server.tool(
   "add_feedback",
   `
-  Trigger: User wants to MODIFY, UPDATE, or DELETE (without providing IDs) specific memories.
-  Purpose: Modify/Delete existing memories based on natural language feedback.
+  Trigger: User wants to MODIFY/UPDATE memories, OR as the final step of a DELETION workflow.
+  Purpose: Modify existing memories or record deletion feedback.
   STRICT RULES:
-    1. USAGE: Use this tool for modifying/updating memories OR deleting memories when NO ID is provided.
-    2. CONTENT: \`feedback_content\` MUST be ONLY the user's intent (e.g., "User wants to modify memory X", "Delete memory about Y"). 
+    1. **MODIFICATION**: Use this tool directly for soft updates/corrections.
+    2. **DELETION**: Use this tool AFTER calling \`delete_memory\` to verify/log the deletion.
+       - **CRITICAL**: The content MUST be the **User's Natural Language Intent** (e.g., "User wants to delete memories about X"). 
+       - **FORBIDDEN**: Do NOT include technical details like "IDs [x, y]" in the content.
+    3. CONTENT: \`feedback_content\` MUST be clear user intent.
        - FORBIDDEN: Adding non-user-intent info or verbose narratives.
        - FORBIDDEN: Looking up old memory values to construct a "Change X to Y" request. Just say "User wants Y".
-    3. RETRY POLICY: FIRE AND FORGET. Call this tool ONCE.
+    4. RETRY POLICY: FIRE AND FORGET. Call this tool ONCE.
        - FORBIDDEN: Checking if it worked (searching again).
        - FORBIDDEN: Retrying if it "failed".
        - FORBIDDEN: Sleeping and searching.
        - CRITICAL: If modification seemingly fails, DO NOT attempt to "fix" it by calling \`delete_memory\` and \`add_message\`. Just stop.
-    4. DELETION: If user wants to delete but gives no ID, use this tool.
   Parameters:
     - \`conversation_first_message\`: Used to generate the conversation_id.
     - \`feedback_content\`: The natural language update or feedback (no IDs or technical metadata).
