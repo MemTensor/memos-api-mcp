@@ -283,7 +283,16 @@ server.tool("search_memory", `
       3. **Output**: Answer the question directly. **Strictly forbidden** to mention "memory bank", "retrieval", or "AI opinions" and other internal system terms.
 
   Parameters:
-    - \`query\`: User's current question/message
+    - \`query\`: User's current question/message.
+    - \`filter\`: Filter conditions to limit memory scope.
+    - \`knowledgebase_ids\`: Target knowledgebase IDs. Default: empty.
+    - \`include_preference\`: Enable preference memory recall. Default: true.
+    - \`preference_limit_number\`: Max preference memories. Default: 9.
+    - \`include_tool_memory\`: Enable tool memory recall. Default: false.
+    - \`tool_memory_limit_number\`: Max tool memories. Default: 6.
+    - \`include_skill\`: Enable Skill recall. Default: false.
+    - \`skill_limit_number\`: Max Skills. Default: 6.
+    - \`relativity\`: Relevance threshold (0-1).
     - \`conversation_first_message\`: First user message in the thread (used to generate conversation_id)
     - \`memory_limit_number\`: Maximum number of results to return, defaults to 20
   Notes:
@@ -291,10 +300,19 @@ server.tool("search_memory", `
     - \`query\` should be a concise summary of the current user message.
     - Prefer recent and important memories. If none are relevant, proceed to answer normally.
   `, {
-    query: z.string().describe("Search query to find relevant content in conversation history"),
+    query: z.string().describe("Search query to find relevant content in conversation history."),
+    filter: z.record(z.any()).optional().describe("Filter conditions to limit memory scope."),
+    knowledgebase_ids: z.array(z.string()).optional().describe("Target knowledgebase IDs. Default: empty."),
+    include_preference: z.boolean().optional().describe("Enable preference memory recall. Default: true."),
+    preference_limit_number: z.number().optional().describe("Max preference memories to return. Default: 9."),
+    include_tool_memory: z.boolean().optional().describe("Enable tool memory recall. Default: false."),
+    tool_memory_limit_number: z.number().optional().describe("Max tool memories to return. Default: 6."),
+    include_skill: z.boolean().optional().describe("Enable Skill recall. Default: false."),
+    skill_limit_number: z.number().optional().describe("Max Skills to return. Default: 6."),
+    relativity: z.number().optional().describe("Relevance threshold (0-1)."),
     conversation_first_message: z.string().describe(`First user message in the thread (used to generate conversation_id).`),
     memory_limit_number: z.number().describe("Maximum number of results to return, defaults to 20")
-}, async ({ query, conversation_first_message, memory_limit_number }) => {
+}, async ({ query, filter, knowledgebase_ids, memory_limit_number, include_preference, preference_limit_number, include_tool_memory, tool_memory_limit_number, include_skill, skill_limit_number, relativity, conversation_first_message }) => {
     try {
         if (!process.env.MEMOS_API_KEY) {
             throw new Error("MEMOS_API_KEY is not set, please set it in the environment variables or mcp.json file");
@@ -306,12 +324,31 @@ server.tool("search_memory", `
             throw new Error("Unknown channel: " + MEMOS_CHANNEL_ID);
         }
         const actualConversationId = stringToMd5(process.env.MEMOS_USER_ID + '\n' + conversation_first_message) || process.env.MEMOS_CONVERSATION_ID;
-        const data = await queryMemos("/search/memory", {
+        const body = {
             query,
             user_id: process.env.MEMOS_USER_ID,
             conversation_id: actualConversationId,
             memory_limit_number: memory_limit_number || 6
-        }, process.env.MEMOS_API_KEY, MEMOS_CHANNEL_ID);
+        };
+        if (filter)
+            body.filter = filter;
+        if (knowledgebase_ids)
+            body.knowledgebase_ids = knowledgebase_ids;
+        if (include_preference !== undefined)
+            body.include_preference = include_preference;
+        if (preference_limit_number !== undefined)
+            body.preference_limit_number = preference_limit_number;
+        if (include_tool_memory !== undefined)
+            body.include_tool_memory = include_tool_memory;
+        if (tool_memory_limit_number !== undefined)
+            body.tool_memory_limit_number = tool_memory_limit_number;
+        if (include_skill !== undefined)
+            body.include_skill = include_skill;
+        if (skill_limit_number !== undefined)
+            body.skill_limit_number = skill_limit_number;
+        if (relativity !== undefined)
+            body.relativity = relativity;
+        const data = await queryMemos("/search/memory", body, process.env.MEMOS_API_KEY, MEMOS_CHANNEL_ID);
         return { content: [{ type: "text", text: JSON.stringify(data) }], structuredContent: data };
     }
     catch (e) {

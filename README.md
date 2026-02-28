@@ -48,6 +48,15 @@ This package provides the following MCP tools:
      - `query`: Search query to find relevant content in conversation history.
      - `conversation_id`: Conversation ID to define the search scope.
      - `memory_limit_number`: Maximum number of results to return (default: 6).
+     - `filter`: (Optional) Filter conditions to limit memory scope.
+     - `knowledgebase_ids`: (Optional) Target knowledgebase IDs. Default: empty.
+     - `include_preference`: (Optional) Enable preference memory recall. Default: true.
+     - `preference_limit_number`: (Optional) Max preference memories to return. Default: 9.
+     - `include_tool_memory`: (Optional) Enable tool memory recall. Default: false.
+     - `tool_memory_limit_number`: (Optional) Max tool memories to return. Default: 6.
+     - `include_skill`: (Optional) Enable Skill recall. Default: false.
+     - `skill_limit_number`: (Optional) Max Skills to return. Default: 6.
+     - `relativity`: (Optional) Relevance threshold (0-1).
 
 3. `delete_memory`
    - Delete specific memories by their IDs.
