@@ -316,18 +316,18 @@ server.tool(
       3. **Output**: Answer the question directly. **Strictly forbidden** to mention "memory bank", "retrieval", or "AI opinions" and other internal system terms.
 
   Parameters:
-    - \`query\`: User's current question/message.
-    - \`filter\`: Filter conditions to limit memory scope.
-    - \`knowledgebase_ids\`: Target knowledgebase IDs. Default: empty.
+    - \`query\`: Text content to search. Token limit: 4k.
+    - \`filter\`: Filter conditions to limit memory scope (e.g., agent_id, create_time, info fields). Supports logical (and, or) and comparison ops.
+    - \`knowledgebase_ids\`: Target knowledgebase IDs. Default is empty (searches no KB). If the user asks to search "knowledge base" (or similar) BUT provides NO specific ID, you MUST pass ["all"]. If the user provides specific IDs, pass those IDs. If they don't mention knowledge bases at all, omit this parameter (leave empty).
     - \`include_preference\`: Enable preference memory recall. Default: true.
-    - \`preference_limit_number\`: Max preference memories. Default: 9.
+    - \`preference_limit_number\`: Max preference memories to return. Default: 9, Max: 25.
     - \`include_tool_memory\`: Enable tool memory recall. Default: false.
-    - \`tool_memory_limit_number\`: Max tool memories. Default: 6.
+    - \`tool_memory_limit_number\`: Max tool memories to return. Default: 6, Max: 25.
     - \`include_skill\`: Enable Skill recall. Default: false.
-    - \`skill_limit_number\`: Max Skills. Default: 6.
-    - \`relativity\`: Relevance threshold (0-1).
-    - \`conversation_first_message\`: First user message in the thread (used to generate conversation_id)
-    - \`memory_limit_number\`: Maximum number of results to return, defaults to 20
+    - \`skill_limit_number\`: Max Skills to return. Default: 6, Max: 25.
+    - \`relativity\`: Relevance threshold (0-1). 0 disables filtering. Default: system threshold.
+    - \`conversation_first_message\`: First user message in the thread (used to generate conversation_id).
+    - \`memory_limit_number\`: Max factual memories to return. Default: 9, Max: 25.
   Notes:
     - Run before answering. Results may include noise; filter and use only what is relevant.
     - \`query\` should be a concise summary of the current user message.
@@ -335,19 +335,19 @@ server.tool(
   `,
   {
     query: z.string().describe("Search query to find relevant content in conversation history."),
-    filter: z.record(z.any()).optional().describe("Filter conditions to limit memory scope."),
-    knowledgebase_ids: z.array(z.string()).optional().describe("Target knowledgebase IDs. Default: empty."),
+    filter: z.record(z.any()).optional().describe("Filter conditions (e.g., agent_id, create_time, info fields) with logical/comparison ops."),
+    knowledgebase_ids: z.array(z.string()).optional().describe("1) User says search ALL knowledge bases OR asks to search KBs without giving an ID -> you MUST pass [\"all\"]. 2) User gives specific KB IDs -> pass those IDs array. 3) User doesn't mention knowledge bases at all -> OMIT THIS PARAMETER (empty)."),
     include_preference: z.boolean().optional().describe("Enable preference memory recall. Default: true."),
-    preference_limit_number: z.number().optional().describe("Max preference memories to return. Default: 9."),
+    preference_limit_number: z.number().optional().describe("Max preference memories to return. Default: 9, Max: 25."),
     include_tool_memory: z.boolean().optional().describe("Enable tool memory recall. Default: false."),
-    tool_memory_limit_number: z.number().optional().describe("Max tool memories to return. Default: 6."),
+    tool_memory_limit_number: z.number().optional().describe("Max tool memories to return. Default: 6, Max: 25."),
     include_skill: z.boolean().optional().describe("Enable Skill recall. Default: false."),
-    skill_limit_number: z.number().optional().describe("Max Skills to return. Default: 6."),
-    relativity: z.number().optional().describe("Relevance threshold (0-1)."),
+    skill_limit_number: z.number().optional().describe("Max Skills to return. Default: 6, Max: 25."),
+    relativity: z.number().optional().describe("Relevance threshold (0-1). 0 disables filtering."),
     conversation_first_message: z.string().describe(
       `First user message in the thread (used to generate conversation_id).`
     ),
-    memory_limit_number: z.number().describe("Maximum number of results to return, defaults to 20")
+    memory_limit_number: z.number().optional().describe("Max factual memories to return. Default: 9, Max: 25.")
   },
   async ({
     query,
