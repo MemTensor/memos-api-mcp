@@ -45,9 +45,22 @@ This package provides the following MCP tools:
 2. `search_memory`
    - Searches for memories in a conversation.
    - Parameters:
-     - `query`: Search query to find relevant content in conversation history.
-     - `conversation_id`: Conversation ID to define the search scope.
-     - `memory_limit_number`: Maximum number of results to return (default: 6).
+     - `query`: Text content to search within the memories. The token limit for a single query is 4k.
+     - `filter`: (Optional) Filter conditions, used to precisely limit the memory scope before retrieval.
+     - `knowledgebase_ids`: (Optional) Array specifying the knowledge bases to search. 
+       - **DO NOT USE THIS** unless the user explicitly mentions "knowledge base" or "KB".
+       - 1) If the user explicitly asks to search ALL knowledge bases -> pass `["all"]`.
+       - 2) If the user specifies particular KB IDs -> pass those IDs.
+       - 3) If the user DOES NOT mention knowledge bases -> OMIT this parameter (do not send it).
+     - `include_preference`: (Optional) Enable preference memory recall. Default: true.
+     - `preference_limit_number`: (Optional) Max preference memories to return. Default: 9, max 25.
+     - `include_tool_memory`: (Optional) Enable tool memory recall. Default: false.
+     - `tool_memory_limit_number`: (Optional) Max tool memories to return. Default: 6, max 25.
+     - `include_skill`: (Optional) Enable Skill recall. Default: false.
+     - `skill_limit_number`: (Optional) Max Skills to return. Default: 6, max 25.
+     - `relativity`: (Optional) Relevance threshold (0-1) for recalled memories. A value of 0 disables relevance filtering.
+     - `conversation_first_message`: First user message in the thread (used to generate conversation_id).
+     - `memory_limit_number`: Maximum number of memories that can be recalled. Default: 9, max 25.
 
 3. `delete_memory`
    - Delete specific memories by their IDs.
