@@ -8,13 +8,19 @@
   "scripts": {
     "build": "rm -rf build && tsc",
     "postbuild": "echo '#!/usr/bin/env node' | cat - build/index.js > build/index.tmp && mv build/index.tmp build/index.js",
+    "build-win": "node -e \"require('fs').rmSync('build', {recursive:true, force:true})\" && tsc",
+    "postbuild-win": "node -e \"const fs=require('fs');const p='build/index.js';if(fs.existsSync(p)){const c=fs.readFileSync(p,'utf8');fs.writeFileSync(p,'#!/usr/bin/env node\\n'+c);}\"",
     "dev": "tsx src/index.ts",
     "start": "node build/index.js",
     "inspect": "npx @modelcontextprotocol/inspector node build/index.js",
     "publish-beta": "npm run build && npm publish --tag beta",
+    "publish-beta-win": "npm run build-win && npm publish --tag beta",
     "publish-beta-patch": "npm run build && npm version prepatch --preid=beta && npm publish --tag beta",
+    "publish-beta-patch-win": "npm run build-win && npm version prepatch --preid=beta && npm publish --tag beta",
     "publish-latest": "npm run build && npm version $(node -p \"require('./package.json').version.split('-')[0]\") && npm publish",
-    "publish-latest-patch": "npm run build && npm version patch && npm publish"
+    "publish-latest-win": "npm run build-win && npm version $(node -p \"require('./package.json').version.split('-')[0]\") && npm publish",
+    "publish-latest-patch": "npm run build && npm version patch && npm publish",
+    "publish-latest-patch-win": "npm run build-win && npm version patch && npm publish"
   },
   "engines": {
     "node": ">=18"
