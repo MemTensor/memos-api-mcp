@@ -98,13 +98,25 @@ Use retrieved memories **only if relevant**. If none are relevant, answer normal
     - Use \`add_feedback\` to describe the correction.
 - **Rule**: Never use these tools for adding new information (use \`add_message\` instead).
 
+### 5) 👤 Holistic context & Knowledge Management (User-triggered)
+- **Tool: \`get_user_profile\`**:
+    - **Trigger**: User asks "Who am I?", "What do you know about me?", or requests a summary/profile of their identity/preferences/habits.
+    - **Note**: This provides a structured factual & preference profile. It does NOT replace the mandatory \`search_memory\` call.
+- **Knowledge Base (KB) Tools**:
+    - **Trigger**: User mentions "Knowledge Base", "KB", or interacts with structured project documents/manuals.
+    - **Tools**: \`create_knowledge_base\`, \`add_kb_document\`, \`get_kb_documents\`, \`delete_kb_documents\`, \`remove_knowledge_base\`.
+
 ## ✅ Non-Negotiable Client Responsibilities
 1. **Auto-invoke** \`search_memory\` before **every** answer and \`add_message\` after **every** answer.
 2. **No user opt-in**: Do not wait for the user to explicitly mention memory/tools/MCP.
 3. **Stable \`conversation_first_message\`** across the thread.
 4. **Store both user and assistant** messages every turn.
 5. **Sequence**: Search → Answer → Save.
-6. **Correct Tool Choice**: Use \`add_message\` for ALL new content (adding facts). Use \`add_feedback\` ONLY for updates, corrections, or refinements of existing memories.
+6. **Correct Tool Choice**: 
+    - Use \`add_message\` for ALL new content (adding facts). 
+    - Use \`add_feedback\` ONLY for updates, corrections, or refinements.
+    - Use \`get_user_profile\` for identity summaries or "Who am I?" requests.
+    - Use KB tools for document/manual management.
 
 ## Example (pseudo-flow)
 \`\`\`javascript
@@ -257,6 +269,11 @@ server.tool("add_message", `
 server.tool("search_memory", `
   Trigger: MUST be auto-invoked by the client before generating every answer (including greetings like "hello"). Do not wait for the user to request memory/MCP/tool usage.
   Purpose: MemOS retrieval API. Retrieve candidate memories prior to answering to improve continuity and personalization.
+  ## 👤 Identity Query Rule
+  - If the user asks "Who am I?", "What is my profile?", or asks for a summary of what you know about them/their identity/habits:
+    1. Call this tool (\`search_memory\`) to find recent context.
+    2. **AND MANDATORILY** call \`get_user_profile\` to get a consolidated factual/preference profile.
+    - Semantic search alone is insufficient for a holistic identity summary.
   Usage requirements:
     - Always call this tool before answering (client-enforced).
     - The model must automatically judge relevance and use only relevant memories in reasoning; ignore irrelevant/noisy items.
@@ -456,6 +473,171 @@ server.tool("add_feedback", `
             content: [{ type: "text", text: `Error: ${e instanceof Error ? e.message : "Unknown error"}` }],
             isError: true
         };
+    }
+});
+server.tool("get_user_profile", `
+  Trigger: **MANDATORY** for queries like "Who am I?", "What's my profile?", "What do you know about me?", or any requests regarding the user's identity/preferences.
+  Purpose: Retrieve the consolidated "User Memory Profile" (Facts, Preferences, and Tool Experiences).
+  Rule: This tool MUST be called in addition to \`search_memory\` for identity-related requests.
+  Returns: 
+    1. Factual Memories (Working Memory)
+    2. Explicit/Implicit Preferences
+    3. Tool Trajectories (Experience and success rate with specific tools)
+  `, {
+    include_preference: z.boolean().optional().describe("Include preference memories. Default: true"),
+    include_tool_memory: z.boolean().optional().describe("Include tool usage trajectory memories. Default: false"),
+    current: z.number().optional().describe("Page number for pagination. Default: 1"),
+    size: z.number().optional().describe("Number of entries to return per page. Max: 50")
+}, async ({ include_preference, include_tool_memory, current, size }) => {
+    try {
+        if (!process.env.MEMOS_API_KEY || !process.env.MEMOS_USER_ID) {
+            throw new Error("Missing environment variables (MEMOS_API_KEY/MEMOS_USER_ID)");
+        }
+        const data = await queryMemos("/get/memory", {
+            user_id: process.env.MEMOS_USER_ID,
+            include_preference: include_preference ?? true,
+            include_tool_memory: include_tool_memory ?? false,
+            current: current ?? 1,
+            size: size ?? 20
+        }, process.env.MEMOS_API_KEY, MEMOS_CHANNEL_ID);
+        return { content: [{ type: "text", text: JSON.stringify(data) }], structuredContent: data };
+    }
+    catch (e) {
+        return { content: [{ type: "text", text: `Error: ${e instanceof Error ? e.message : "Unknown error"}` }], isError: true };
+    }
+});
+server.tool("create_knowledge_base", `
+  Trigger: When the user asks to create a project-specific or domain-specific "Knowledge Base".
+  Purpose: Create a named container for structured documents.
+  `, {
+    knowledgebase_name: z.string().describe("Human-readable name for the knowledge base"),
+    knowledgebase_description: z.string().optional().describe("Description of what this knowledge base contains")
+}, async ({ knowledgebase_name, knowledgebase_description }) => {
+    try {
+        if (!process.env.MEMOS_API_KEY)
+            throw new Error("Missing MEMOS_API_KEY");
+        const data = await queryMemos("/create/knowledgebase", { knowledgebase_name, knowledgebase_description }, process.env.MEMOS_API_KEY, MEMOS_CHANNEL_ID);
+        return { content: [{ type: "text", text: JSON.stringify(data) }], structuredContent: data };
+    }
+    catch (e) {
+        return { content: [{ type: "text", text: `Error: ${e instanceof Error ? e.message : "Unknown error"}` }], isError: true };
+    }
+});
+server.tool("add_kb_document", `
+  Trigger: Use when the user provides document content, a file URL, or a local file path to be added to a Knowledge Base.
+  Purpose: Add documents to a Knowledge Base.
+
+  ## 📂 File Handling Rules:
+  1. **Local Files/Paths**: For local files, you MUST directly pass the absolute file path as the content. The system will automatically read and process it. DO NOT convert it into Base64 yourself. You MUST provide the 'mime_type' parameter for local files.
+  2. **Public URLs**: Pass the URL. If the URL lacks http/https, the system will attempt to format it.
+  3. **Base64 / Text Content**: You can optionally pass base64 Data URIs (e.g., 'data:application/pdf;base64,...').
+  `, {
+    knowledgebase_id: z.string().describe("Target knowledge base ID"),
+    file: z.array(z.object({
+        content: z.string().describe("Document content. CAN be: 1) A local absolute file path (STRONGLY RECOMMENDED); 2) A public URL; 3) Base64 encoded Data URI."),
+        file_name: z.string().optional().describe("Optional file name, e.g. 'report.pdf'"),
+        mime_type: z.string().optional().describe("Standard MIME type of the file. e.g. 'application/pdf', 'image/jpeg', 'text/markdown'. IMPORTANT: Must be provided if 'content' is a local file path.")
+    })).describe("List of documents to upload (max 20)")
+}, async ({ knowledgebase_id, file }) => {
+    try {
+        if (!process.env.MEMOS_API_KEY)
+            throw new Error("Missing MEMOS_API_KEY");
+        const processedFiles = [];
+        for (const f of file) {
+            let content = f.content;
+            let file_name = f.file_name;
+            let mime_type = f.mime_type;
+            // 1. Normalize potential local paths
+            let filePath = content;
+            if (filePath.startsWith("file://")) {
+                filePath = filePath.replace(/^file:\/\/\//, process.platform === "win32" ? "" : "/").replace(/^file:\/\//, "");
+            }
+            if (filePath.startsWith("~/") || filePath.startsWith("~\\")) {
+                const os = await import("os");
+                filePath = os.homedir() + filePath.substring(1);
+            }
+            // 2. Try to read it directly as a local file
+            const fs = await import("node:fs");
+            if (fs.existsSync(filePath)) {
+                try {
+                    // Extract file name
+                    const normalizedPath = filePath.replace(/\\/g, "/");
+                    const extractedName = normalizedPath.substring(normalizedPath.lastIndexOf('/') + 1);
+                    if (!file_name && extractedName) {
+                        file_name = extractedName;
+                    }
+                    const mimeType = mime_type || "application/octet-stream";
+                    const fileBuffer = fs.readFileSync(filePath);
+                    content = `data:${mimeType};base64,` + fileBuffer.toString("base64");
+                }
+                catch (err) {
+                    throw new Error(`Failed to read local file at path '${filePath}'. Error: ${err instanceof Error ? err.message : String(err)}`);
+                }
+            }
+            else {
+                // 3. Fallback: If it doesn't exist locally, pass it generally intact 
+                // as it might be an unformatted URL (e.g. www.baidu.com)
+                if (!content.startsWith("http://") && !content.startsWith("https://") && !content.startsWith("data:")) {
+                    if (content.startsWith("www.") || content.includes(".com") || content.includes(".cn")) {
+                        content = "http://" + content;
+                    }
+                }
+            }
+            processedFiles.push({ ...f, content, file_name, mime_type });
+        }
+        const data = await queryMemos("/add/knowledgebase-file", { knowledgebase_id, file: processedFiles }, process.env.MEMOS_API_KEY, MEMOS_CHANNEL_ID);
+        return { content: [{ type: "text", text: JSON.stringify(data) }], structuredContent: data };
+    }
+    catch (e) {
+        return { content: [{ type: "text", text: `Error: ${e instanceof Error ? e.message : "Unknown error"}` }], isError: true };
+    }
+});
+server.tool("get_kb_documents", `
+  Trigger: Use to retrieve detailed information about specific documents in a Knowledge Base.
+  Purpose: Get document details by ID.
+  `, {
+    file_ids: z.array(z.string()).describe("List of document IDs to retrieve")
+}, async ({ file_ids }) => {
+    try {
+        if (!process.env.MEMOS_API_KEY)
+            throw new Error("Missing MEMOS_API_KEY");
+        const data = await queryMemos("/get/knowledgebase-file", { file_ids }, process.env.MEMOS_API_KEY, MEMOS_CHANNEL_ID);
+        return { content: [{ type: "text", text: JSON.stringify(data) }], structuredContent: data };
+    }
+    catch (e) {
+        return { content: [{ type: "text", text: `Error: ${e instanceof Error ? e.message : "Unknown error"}` }], isError: true };
+    }
+});
+server.tool("delete_kb_documents", `
+  Trigger: Use when specific documents in a Knowledge Base should be removed.
+  Purpose: Delete documents from a Knowledge Base by their IDs.
+  `, {
+    file_ids: z.array(z.string()).describe("List of document IDs to delete")
+}, async ({ file_ids }) => {
+    try {
+        if (!process.env.MEMOS_API_KEY)
+            throw new Error("Missing MEMOS_API_KEY");
+        const data = await queryMemos("/delete/knowledgebase-file", { file_ids }, process.env.MEMOS_API_KEY, MEMOS_CHANNEL_ID);
+        return { content: [{ type: "text", text: JSON.stringify(data) }], structuredContent: data };
+    }
+    catch (e) {
+        return { content: [{ type: "text", text: `Error: ${e instanceof Error ? e.message : "Unknown error"}` }], isError: true };
+    }
+});
+server.tool("remove_knowledge_base", `
+  Trigger: User requests to remove a Knowledge Base from the project.
+  Purpose: Remove a Knowledge Base association.
+  `, {
+    knowledgebase_id: z.string().describe("ID of the knowledge base to remove")
+}, async ({ knowledgebase_id }) => {
+    try {
+        if (!process.env.MEMOS_API_KEY)
+            throw new Error("Missing MEMOS_API_KEY");
+        const data = await queryMemos("/delete/knowledgebase", { knowledgebase_id }, process.env.MEMOS_API_KEY, MEMOS_CHANNEL_ID);
+        return { content: [{ type: "text", text: JSON.stringify(data) }], structuredContent: data };
+    }
+    catch (e) {
+        return { content: [{ type: "text", text: `Error: ${e instanceof Error ? e.message : "Unknown error"}` }], isError: true };
     }
 });
 async function startServer() {
