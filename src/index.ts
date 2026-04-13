@@ -646,7 +646,7 @@ server.tool(
       return { content: [{ type: "text", text: `Error: ${e instanceof Error ? e.message : "Unknown error"}` }], isError: true };
     }
   }
-)
+);
 
 server.tool(
   "add_kb_document",
@@ -658,6 +658,11 @@ server.tool(
   1. **Local Files/Paths**: For local files, you MUST directly pass the absolute file path as the content. The system will automatically read and process it. DO NOT convert it into Base64 yourself. You MUST provide the 'mime_type' parameter for local files.
   2. **Public URLs**: Pass the URL. If the URL lacks http/https, the system will attempt to format it.
   3. **Base64 / Text Content**: You can optionally pass base64 Data URIs (e.g., 'data:application/pdf;base64,...').
+
+  ## ⚠️ Failure Handling:
+  - If the API returns an error (e.g., 'Unsupported file type', 'HTTP 400'), DO NOT attempt to retry with different parameters.
+  - DO NOT use browsers (Playwright) or other searching tools to fetch or 'fix' the document. 
+  - Immediately report the original error message to the user.
   `,
   {
     knowledgebase_id: z.string().describe("Target knowledge base ID"),
@@ -673,15 +678,23 @@ server.tool(
       
       const processedFiles = [];
       for (const f of file) {
-        let content = f.content;
+        let content = f.content.trim().replace(/^["']|["']$/g, '');
         let file_name = f.file_name;
         let mime_type = f.mime_type;
         
-        // 1. Normalize potential local paths
+        // 1. Normalize potential local paths (isolated in filePath to protect URLs)
         let filePath = content;
+
+        // Auto-expand environment variables (e.g. $HOME, %USERPROFILE%)
+        filePath = filePath.replace(/\$([A-Z_]+[A-Z0-9_]*)/ig, (_, n) => process.env[n] || `$${n}`);
+        filePath = filePath.replace(/%([A-Z_]+[A-Z0-9_]*)%/ig, (_, n) => process.env[n] || `%${n}%`);
+
         if (filePath.startsWith("file://")) {
             filePath = filePath.replace(/^file:\/\/\//, process.platform === "win32" ? "" : "/").replace(/^file:\/\//, "");
+            // File URIs might be percent-encoded (e.g. %20 for spaces)
+            try { filePath = decodeURI(filePath); } catch (e) {}
         }
+        
         if (filePath.startsWith("~/") || filePath.startsWith("~\\")) {
             const os = await import("os");
             filePath = os.homedir() + filePath.substring(1);
@@ -706,9 +719,9 @@ server.tool(
           }
         } else {
             // 3. Fallback: If it doesn't exist locally, pass it generally intact 
-            // as it might be an unformatted URL (e.g. www.baidu.com)
             if (!content.startsWith("http://") && !content.startsWith("https://") && !content.startsWith("data:")) {
-               if (content.startsWith("www.") || content.includes(".com") || content.includes(".cn")) {
+               // Only format as web link if it strongly resembles a recognized domain avoids matching .pdf/.txt
+               if (content.startsWith("www.") || /\.(com|org|net|io|cn|app|ai|me|co|dev)(?:\/|$)/i.test(content)) {
                    content = "http://" + content;
                }
             }
