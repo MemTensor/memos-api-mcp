@@ -81,6 +81,44 @@ This package provides the following MCP tools:
      - `allow_public`: (Optional) Whether to allow public access (default: false).
      - `allow_knowledgebase_ids`: (Optional) List of knowledge base IDs allowed to be written to.
 
+5. `get_user_profile`
+   - Get the user's full memory profile (facts, preferences, and tool trajectories).
+   - Parameters:
+     - `include_preference`: (Optional) Whether to include preference memories.
+     - `include_tool_memory`: (Optional) Whether to include tool trajectory memories.
+     - `current`: (Optional) Page number.
+     - `size`: (Optional) Number of entries per page.
+
+6. `create_knowledge_base`
+   - Create a named knowledge base container.
+   - Parameters:
+     - `knowledgebase_name`: Name of the knowledge base.
+     - `knowledgebase_description`: (Optional) Description of the knowledge base.
+
+7. `remove_knowledge_base`
+   - Remove a knowledge base association.
+   - Parameters:
+     - `knowledgebase_id`: Target knowledge base ID.
+
+8. `add_kb_document`
+   - Upload document(s) to a specified knowledge base.
+   - Parameters:
+     - `knowledgebase_id`: Target knowledge base ID.
+     - `file`: Document list.
+       - `content`: Local absolute path, public URL, or Base64 Data URI.
+       - `file_name`: (Optional) File name.
+       - `mime_type`: (Optional) MIME type. Required when `content` is a local file path.
+
+9. `get_kb_documents`
+   - Get document metadata in batches by file IDs.
+   - Parameters:
+     - `file_ids`: List of document IDs.
+
+10. `delete_kb_documents`
+   - Delete specified documents from the knowledge base by file IDs.
+   - Parameters:
+     - `file_ids`: List of document IDs.
+
 
 
 All tools use the same configuration and require the `MEMOS_API_KEY` environment variable.
