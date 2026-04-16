@@ -727,7 +727,7 @@ server.tool(
             }
         }
         
-        processedFiles.push({ ...f, content, file_name, mime_type });
+        processedFiles.push({ ...f, content, name:file_name, mime_type });
       }
 
       const data = await queryMemos(
