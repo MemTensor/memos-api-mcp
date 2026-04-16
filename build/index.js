@@ -596,7 +596,7 @@ server.tool("add_kb_document", `
                     }
                 }
             }
-            processedFiles.push({ ...f, content, file_name, mime_type });
+            processedFiles.push({ ...f, content, name: file_name, mime_type });
         }
         const data = await queryMemos("/add/knowledgebase-file", { knowledgebase_id, file: processedFiles }, process.env.MEMOS_API_KEY, MEMOS_CHANNEL_ID);
         return { content: [{ type: "text", text: JSON.stringify(data) }], structuredContent: data };

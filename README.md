@@ -213,4 +213,4 @@ memos-mcp/
 
 ## Version
 
-Current version: 1.0.0-beta.2
+Current version: 1.1.0
