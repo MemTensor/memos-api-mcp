@@ -497,7 +497,7 @@ server.tool("get_user_profile", `
             user_id: process.env.MEMOS_USER_ID,
             include_preference: include_preference ?? true,
             include_tool_memory: include_tool_memory ?? false,
-            current: current ?? 1,
+            page: current ?? 1,
             size: size ?? 20
         }, process.env.MEMOS_API_KEY, MEMOS_CHANNEL_ID);
         return { content: [{ type: "text", text: JSON.stringify(data) }], structuredContent: data };
